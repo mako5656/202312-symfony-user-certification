@@ -2,6 +2,8 @@
 
 namespace App\Command;
 
+use App\Entity\User;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
@@ -16,34 +18,45 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 )]
 class UserCreateCommand extends Command
 {
-    public function __construct()
+    protected static $defaultName = 'app:user:create';
+
+    private EntityManagerInterface $em;
+
+    public function __construct(EntityManagerInterface $em)
     {
         parent::__construct();
+
+        $this->em = $em;
     }
 
-    protected function configure(): void
+    protected function configure()
     {
         $this
-            ->addArgument('arg1', InputArgument::OPTIONAL, 'Argument description')
-            ->addOption('option1', null, InputOption::VALUE_NONE, 'Option description')
+            ->setDescription('Create new User')
+            ->addArgument('email', InputArgument::REQUIRED, 'email')
+            ->addArgument('password', InputArgument::REQUIRED, 'password')
+            ->addOption('roles', 'r', InputOption::VALUE_REQUIRED|InputOption::VALUE_IS_ARRAY, 'roles (multiple allowed)')
         ;
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
-        $arg1 = $input->getArgument('arg1');
 
-        if ($arg1) {
-            $io->note(sprintf('You passed an argument: %s', $arg1));
-        }
+        $email = $input->getArgument('email');
+        $password = $input->getArgument('password');
+        $roles = $input->getOption('roles');
 
-        if ($input->getOption('option1')) {
-            // ...
-        }
+        $user = new User();
+        $user->setEmail($email);
+        $user->setPassword($password);
+        $user->setRoles($roles ?: ['ROLE_USER']);
 
-        $io->success('You have a new command! Now make it your own! Pass --help to see your options.');
+        $this->em->persist($user);
+        $this->em->flush();
 
-        return Command::SUCCESS;
+        $io->success('User is created');
+
+        return 0;
     }
 }
